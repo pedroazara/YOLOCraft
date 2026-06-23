@@ -171,19 +171,29 @@ runs/
 
 ## Objetivos
 
-### Fase Atual
+### Fase Atual — Detecção de Objetos
 
-* Detectar mobs automaticamente em imagens;
-* Avaliar o desempenho de arquiteturas YOLO modernas;
-* Explorar técnicas de segmentação e detecção de objetos;
-* Desenvolver um pipeline reproduzível para projetos de visão computacional;
-* Comparar diferentes modelos YOLO e hiperparâmetros.
+* Detectar mobs automaticamente em imagens utilizando modelos da família YOLO;
+* Avaliar o desempenho de arquiteturas modernas de detecção de objetos;
+* Comparar diferentes modelos YOLO (Nano, Small, Medium, etc.);
+* Avaliar métricas como Precision, Recall, mAP50 e mAP50-95;
+* Desenvolver um pipeline reproduzível para treinamento, validação e inferência;
+* Investigar o impacto de diferentes hiperparâmetros no desempenho do modelo.
 
-### Fase Futura
+### Próxima Fase — Segmentação com OpenCV
+
+* Utilizar as bounding boxes produzidas pelo YOLO como regiões de interesse (ROI);
+* Aplicar técnicas clássicas de segmentação utilizando OpenCV;
+* Comparar diferentes algoritmos de segmentação;
+* Avaliar a qualidade das máscaras geradas;
+* Investigar abordagens híbridas combinando Deep Learning e Processamento Digital de Imagens.
+
+### Fase Futura — Aplicação Web
 
 * Desenvolver uma aplicação web para inferência;
 * Permitir upload de imagens pelo usuário;
 * Exibir detecções em tempo real;
+* Exibir as máscaras segmentadas produzidas pelo OpenCV;
 * Disponibilizar o modelo treinado online;
 * Criar uma interface amigável para demonstração dos resultados.
 
@@ -194,33 +204,47 @@ runs/
 * Ultralytics YOLO
 * OpenCV
 * NumPy
+* Pandas
 * Matplotlib
+* Jupyter Notebook
 * Kaggle CLI
+* Git e GitHub
 
 ## Roadmap
 
-### Versão 1.0
+### Versão 1.0 — Detecção com YOLO
 
 * [x] Estrutura inicial do projeto
 * [x] Download automatizado do dataset
 * [x] Análise exploratória dos dados
-* [ ] Treinamento do modelo
+* [x] Verificação do balanceamento das classes
+* [x] Validação visual das anotações
+* [ ] Treinamento baseline (YOLO26n)
 * [ ] Avaliação de desempenho
 * [ ] Testes de inferência
-
-### Versão 2.0
-
-* [ ] Otimização de hiperparâmetros
-* [ ] Data augmentation
 * [ ] Comparação entre arquiteturas YOLO
-* [ ] Exportação do modelo treinado
+* [ ] Seleção do modelo final de detecção
 
-### Versão 3.0
+### Versão 2.0 — Segmentação com OpenCV
 
-* [ ] API para inferência
+* [ ] Extração das regiões de interesse (ROI)
+* [ ] Segmentação por Threshold
+* [ ] Segmentação por Otsu
+* [ ] Segmentação por Canny
+* [ ] Segmentação por GrabCut
+* [ ] Segmentação por Watershed
+* [ ] Comparação entre métodos de segmentação
+* [ ] Avaliação qualitativa dos resultados
+* [ ] Integração YOLO + OpenCV
+
+### Versão 3.0 — Aplicação Web
+
+* [ ] Desenvolvimento da API de inferência
 * [ ] Aplicação web
 * [ ] Upload de imagens
-* [ ] Interface para visualização das detecções
+* [ ] Visualização das bounding boxes
+* [ ] Visualização das máscaras segmentadas
+* [ ] Dashboard de resultados
 * [ ] Deploy em nuvem
 
 ## Resultados Esperados
