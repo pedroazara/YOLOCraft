@@ -203,7 +203,7 @@ runs/
 
 * [x] Estrutura inicial do projeto
 * [x] Download automatizado do dataset
-* [ ] Análise exploratória dos dados
+* [x] Análise exploratória dos dados
 * [ ] Treinamento do modelo
 * [ ] Avaliação de desempenho
 * [ ] Testes de inferência
