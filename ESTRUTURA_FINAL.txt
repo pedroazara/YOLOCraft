@@ -1,0 +1,144 @@
+📁 YOLOCraft - Estrutura Organizada
+════════════════════════════════════════════════════════════════
+
+YOLOCraft/
+│
+├── 📄 README.md ........................ Informações do projeto
+├── 📄 CLAUDE.md ........................ Configuração do Claude Code
+├── 📄 requirements.txt ................. Dependências
+├── 📄 .gitignore ....................... Arquivos ignorados no Git
+│
+├── 📁 data/ ............................ Dataset do projeto
+│   └── minecraft_mobs/
+│       └── minecraft_mobs_yolo/
+│           ├── train/
+│           ├── val/
+│           └── data.yaml
+│
+├── 📁 notebooks/ ....................... Jupyter Notebooks organizados
+│   ├── 📁 1_exploracao/ ............... Análise inicial (NÃO MODIFICAR)
+│   │   ├── 01_dataset_analysis.ipynb
+│   │   ├── 02_visualize_labels.ipynb
+│   │   └── README.md
+│   │
+│   ├── 📁 2_baseline/ ................. Seu baseline (REFERÊNCIA)
+│   │   ├── 03_baseline_training.ipynb
+│   │   └── README.md
+│   │
+│   ├── 📁 3_experimentos/ ............ 🆕 Seus novos treinos (MODIFIQUE AQUI)
+│   │   ├── TEMPLATE_novo_experimento.ipynb (COPIE ESTE)
+│   │   └── README.md
+│   │
+│   ├── 📁 runs/ ...................... Outputs do YOLO
+│   │   └── detect/
+│   │       ├── train/
+│   │       ├── train-4/
+│   │       ├── val/
+│   │       └── predict/
+│   │
+│   └── 📁 testes/ .................... Imagens para teste
+│       ├── spiders.jpg
+│       ├── spider.jpg
+│       └── ...
+│
+├── 📁 src/ ............................ Código Python reutilizável
+│   ├── __init__.py
+│   ├── config.py ..................... Configurações
+│   ├── training_logger.py ............ 🆕 Logger de treinos
+│   ├── train_with_logging.py ........ 🆕 Script de treino
+│   ├── train_improved.py ............ 🆕 Treinos melhorados
+│   ├── test_thresholds.py ........... 🆕 Teste de thresholds
+│   └── utils.py
+│
+├── 📁 models/ ......................... Modelos treinados
+│   ├── 📁 baseline/ .................. Seu baseline
+│   │   └── best.pt
+│   │
+│   ├── 📁 experiments/ ............... Seus experimentos
+│   │   ├── exp_001_yolo26s/
+│   │   │   └── best.pt
+│   │   └── exp_002_.../ (adicione aqui)
+│   │
+│   ├── 📁 production/ ................ Melhor modelo
+│   │   └── best_model.pt
+│   │
+│   └── README.md
+│
+├── 📁 pretrained_models/ ............ Modelos pré-treinados
+│   ├── yolo11n.pt
+│   ├── yolo26n.pt
+│   └── README.md
+│
+├── 📁 training_logs/ ................. 🆕 Histórico de treinos (GERADO)
+│   ├── training_history.json
+│   └── training_history.csv
+│
+├── 📁 results/ ....................... Análises e visualizações
+│   ├── model_comparison.csv
+│   ├── threshold_analysis.csv
+│   ├── visualizations/
+│   └── README.md
+│
+├── 📁 threshold_tests/ ............... Resultados de testes (GERADO)
+│   └── conf_0.01.jpg
+│
+├── 📁 docs/ .......................... 📚 Documentação
+│   ├── COMO_USAR_LOGGER.md
+│   ├── ESTRUTURA_PROJETO.md
+│   ├── BEST_PRACTICES.md
+│   ├── ROADMAP.md
+│   └── README.md
+│
+└── 📁 scripts/ ....................... Scripts auxiliares
+
+════════════════════════════════════════════════════════════════
+
+🎯 GUIA RÁPIDO DE USO:
+
+1️⃣ Para EXPLORAR os dados:
+   → Vá em notebooks/1_exploracao/
+
+2️⃣ Para VER o BASELINE:
+   → Vá em notebooks/2_baseline/
+
+3️⃣ Para CRIAR NOVO EXPERIMENTO:
+   → Copie: notebooks/3_experimentos/TEMPLATE_novo_experimento.ipynb
+   → Customize e rode
+   → Use logger.log_training() para registrar
+
+4️⃣ Para VER HISTÓRICO DE TREINOS:
+   → Python: logger = TrainingLogger(); logger.print_summary()
+   → Ou: cat training_logs/training_history.csv
+
+5️⃣ Para TESTAR THRESHOLDS:
+   → Python: python src/test_thresholds.py
+
+════════════════════════════════════════════════════════════════
+
+📊 ESTRUTURA DE DADOS:
+
+notebooks/
+├── 1_exploracao/        ← Análise (não mexer)
+├── 2_baseline/          ← Referência (não mexer)
+├── 3_experimentos/      ← SEUS NOVOS TESTES (use aqui!)
+├── runs/                ← Outputs do YOLO (gerado auto)
+└── testes/              ← Imagens para teste
+
+models/
+├── baseline/            ← Seu baseline
+├── experiments/         ← Novos modelos (salve aqui)
+└── production/          ← Melhor modelo em uso
+
+════════════════════════════════════════════════════════════════
+
+🔧 PRÓXIMOS PASSOS:
+
+1. Leia docs/COMO_USAR_LOGGER.md
+2. Crie seu primeiro experimento:
+   cp notebooks/3_experimentos/TEMPLATE_novo_experimento.ipynb \
+      notebooks/3_experimentos/01_teste_yolo26s.ipynb
+3. Abra em Jupyter e customize
+4. Execute e veja os resultados registrados
+5. Compare com baseline usando logger.print_summary()
+
+════════════════════════════════════════════════════════════════

@@ -1,0 +1,10 @@
+﻿# Histórico de Treinos
+
+Este arquivo é gerado automaticamente pelo TrainingLogger.
+
+Ver logs com:
+- Arquivo JSON: training_history.json
+- Arquivo CSV: training_history.csv
+
+Os logs são salvos automaticamente quando você usa:
+    logger.log_training(...)
