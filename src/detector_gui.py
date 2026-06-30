@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtNetwork import QLocalServer
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -28,6 +29,7 @@ from ultralytics import YOLO
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff")
+DETECTOR_SERVER = "yolocraft_detector"
 
 
 def imread_unicode(path):
@@ -192,6 +194,28 @@ class DetectorWindow(QMainWindow):
         self.statusBar().showMessage("Selecione um modelo para começar.")
         self._populate_models()
         self._update_controls()
+        self._setup_server()
+
+    def _setup_server(self):
+        self.server = QLocalServer(self)
+        QLocalServer.removeServer(DETECTOR_SERVER)
+        if self.server.listen(DETECTOR_SERVER):
+            self.server.newConnection.connect(self._on_new_connection)
+        else:
+            self.server = None
+
+    def _on_new_connection(self):
+        socket = self.server.nextPendingConnection()
+        if socket is None:
+            return
+        if socket.waitForReadyRead(1000):
+            path = bytes(socket.readAll()).decode("utf-8", errors="replace").strip()
+            if path:
+                self.load_image(path)
+                self.showNormal()
+                self.raise_()
+                self.activateWindow()
+        socket.disconnectFromServer()
 
     def _build_panel(self):
         panel = QWidget()
@@ -435,6 +459,8 @@ class DetectorWindow(QMainWindow):
         self.save_btn.setEnabled(self.annotated_bgr is not None)
 
     def closeEvent(self, event):
+        if getattr(self, "server", None) is not None:
+            self.server.close()
         for thread in (self.model_loader, self.worker):
             if thread is not None and thread.isRunning():
                 thread.wait(3000)
@@ -445,6 +471,10 @@ def main():
     app = QApplication(sys.argv)
     window = DetectorWindow()
     window.show()
+    for arg in sys.argv[1:]:
+        if Path(arg).is_file():
+            window.load_image(arg)
+            break
     sys.exit(app.exec())
 
 
