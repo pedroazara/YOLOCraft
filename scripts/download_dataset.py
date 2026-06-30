@@ -4,11 +4,11 @@ from pathlib import Path
 from kaggle.api.kaggle_api_extended import KaggleApi
 import zipfile
 
-DATASET = "dracotlw/minecraft-mobs-yolo-dataset"
+DATASET = "pierreayfri/minecraft-mobs"
 
 DATA_DIR = Path("data")
-DATASET_DIR = DATA_DIR / "minecraft_mobs"
-ZIP_FILE = DATA_DIR / "minecraft-mobs-yolo-dataset.zip"
+DATASET_DIR = DATA_DIR / "minecraft_mobs-2"
+ZIP_FILE = DATA_DIR / "minecraft-mobs-2.zip"
 
 
 def download_dataset():
