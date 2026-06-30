@@ -1,0 +1,2 @@
+id,timestamp,date,time,model,epochs,batch_size,imgsz,map50,map50_95,train_time_hours,gpu,notes,hyperparameters,class_metrics
+20260630_184356,2026-06-30T18:43:56.067708,30/06/2026,18:43:56,yolo26s,100,16,768,0.9522,0.8165,2.16,NVIDIA GeForce RTX 4060 Ti,Dataset 1,{},{}
