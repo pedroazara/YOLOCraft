@@ -1,75 +1,84 @@
 # YOLOCraft
 
-Detecção e segmentação de mobs do Minecraft utilizando YOLO e visão computacional.
+Detection and segmentation of Minecraft mobs using YOLO and computer vision.
 
-## Visão Geral
+## Overview
 
-YOLOCraft é um projeto de Deep Learning voltado para a identificação automática de mobs do Minecraft em imagens. O objetivo é treinar modelos da família YOLO para detectar e/ou segmentar entidades do jogo, permitindo aplicações em visão computacional, aprendizado de máquina e experimentação com datasets de jogos.
+YOLOCraft is a Deep Learning project focused on the automatic identification of Minecraft mobs in images. The goal is to train YOLO-family models to detect and/or segment in-game entities, enabling applications in computer vision, machine learning, and experimentation with game datasets.
 
-Atualmente, o foco do projeto está no treinamento, avaliação e testes de modelos de detecção e segmentação. Em versões futuras, o modelo treinado será integrado a uma aplicação web para inferência em tempo real.
+Currently, the project focuses on training, evaluation, and testing of detection and segmentation models. In future versions, the trained model will be integrated into a web application for real-time inference.
 
-O projeto foi desenvolvido como uma oportunidade de estudo prático em:
+The project was developed as an opportunity for hands-on study in:
 
 * Computer Vision
 * Object Detection
 * Instance Segmentation
-* Treinamento de modelos YOLO
-* Organização de pipelines de Machine Learning
+* YOLO model training
+* Machine Learning pipeline organization
 
 ## Dataset
 
-O dataset utilizado é:
+The datasets used are:
 
 * Minecraft Mobs YOLO Dataset
-* Fonte: Kaggle
-* Classes correspondentes a diferentes mobs do Minecraft
+* Source: Kaggle
+* Classes corresponding to different Minecraft mobs
 
 Dataset:
 
 https://www.kaggle.com/datasets/dracotlw/minecraft-mobs-yolo-dataset/data
 
-## Estrutura do Projeto
+## Project Structure
 
 ```text
 YOLOCraft/
 │
 ├── data/
-│   └── minecraft_mobs/
+│   ├── minecraft_mobs/
+│   └── minecraft_mobs-2/
 │
 ├── notebooks/
+│   ├── 1_exploration/
+│   ├── 2_baseline/
+│   └── 3_experiments/
 │
 ├── src/
-│   ├── train.py
-│   ├── predict.py
-│   ├── evaluate.py
+│   ├── config.py
+│   ├── convert_dataset.py
+│   ├── training_logger.py
+│   ├── train_with_logging.py
+│   ├── test_thresholds.py
+│   ├── detector_gui.py
+│   ├── dataset_manager.py
 │   └── utils.py
 │
+├── scripts/
+│   └── download_dataset.py
+│
+├── pretrained_models/
 ├── models/
-│
-├── runs/
-│
-├── download_dataset.py
+├── training_logs/
 ├── requirements.txt
 ├── README.md
 └── .gitignore
 ```
 
-## Instalação
+## Installation
 
-Clone o repositório:
+Clone the repository:
 
 ```bash
-git clone https://github.com/seu-usuario/YOLOCraft.git
+git clone https://github.com/your-user/YOLOCraft.git
 cd YOLOCraft
 ```
 
-Crie um ambiente virtual:
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
 ```
 
-Ative o ambiente:
+Activate the environment:
 
 ### Linux / macOS
 
@@ -83,121 +92,121 @@ source .venv/bin/activate
 .venv\Scripts\activate
 ```
 
-Instale as dependências:
+Install the dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Configuração do Kaggle
+## Kaggle Setup
 
-O projeto utiliza a CLI oficial do Kaggle para baixar automaticamente o dataset.
+The project uses the official Kaggle CLI to download the dataset automatically.
 
-Após instalar as dependências, execute:
+After installing the dependencies, run:
 
 ```bash
 kaggle auth login
 ```
 
-Um link será exibido no terminal.
+A link will be shown in the terminal.
 
-1. Abra o link no navegador;
-2. Faça login na sua conta Kaggle;
-3. Autorize o acesso;
-4. Retorne ao terminal.
+1. Open the link in your browser;
+2. Sign in to your Kaggle account;
+3. Authorize access;
+4. Return to the terminal.
 
-As credenciais serão armazenadas automaticamente e não será necessário repetir esse processo.
+The credentials are stored automatically and you will not need to repeat this process.
 
-Para verificar se a autenticação foi realizada corretamente:
+To verify that authentication was successful:
 
 ```bash
 kaggle datasets list -s minecraft
 ```
 
-## Download do Dataset
+## Dataset Download
 
-Após autenticar sua conta:
+After authenticating your account:
 
 ```bash
-python download_dataset.py
+python scripts/download_dataset.py
 ```
 
-O script irá:
+The script will:
 
-* Verificar se o dataset já existe localmente;
-* Fazer o download apenas quando necessário;
-* Organizar automaticamente os arquivos do projeto.
+* Check whether the dataset already exists locally;
+* Download only when needed;
+* Organize the project files automatically.
 
-Os dados serão armazenados em:
+The data is stored in:
 
 ```text
-data/minecraft_mobs/
+data/
 ```
 
-## Treinamento
+## Training
 
-Exemplo de treinamento com YOLO:
+Training is done in the experiment notebooks under `notebooks/3_experiments/`, which record each run via `src/training_logger.py`. A scripted entry point is also available:
 
 ```bash
-python src/train.py
+python -m src.train_with_logging
 ```
 
-Durante o treinamento serão gerados:
+Each training run produces:
 
-* Pesos do modelo
-* Métricas de validação
-* Curvas de aprendizado
-* Resultados de inferência
+* Model weights
+* Validation metrics
+* Learning curves
+* A logged entry in `training_logs/`
 
-Os resultados serão salvos em:
-
-```text
-runs/
-```
-
-## Inferência
-
-Para realizar previsões em novas imagens:
-
-```bash
-python src/predict.py
-```
-
-Os resultados serão salvos no diretório:
+Run outputs are saved under:
 
 ```text
 runs/
 ```
 
-## Objetivos
+## Dataset Manager and Detector
 
-### Fase Atual — Detecção de Objetos
+Two PyQt applications support the workflow:
 
-* Detectar mobs automaticamente em imagens utilizando modelos da família YOLO;
-* Avaliar o desempenho de arquiteturas modernas de detecção de objetos;
-* Comparar diferentes modelos YOLO (Nano, Small, Medium, etc.);
-* Avaliar métricas como Precision, Recall, mAP50 e mAP50-95;
-* Desenvolver um pipeline reproduzível para treinamento, validação e inferência;
-* Investigar o impacto de diferentes hiperparâmetros no desempenho do modelo.
+```bash
+python -m src.dataset_manager
+python -m src.detector_gui
+```
 
-### Próxima Fase — Segmentação com OpenCV
+* `dataset_manager` browses classes and samples, and exports a curated YOLO dataset.
+* `detector_gui` loads a model and runs detection on an uploaded image.
 
-* Utilizar as bounding boxes produzidas pelo YOLO como regiões de interesse (ROI);
-* Aplicar técnicas clássicas de segmentação utilizando OpenCV;
-* Comparar diferentes algoritmos de segmentação;
-* Avaliar a qualidade das máscaras geradas;
-* Investigar abordagens híbridas combinando Deep Learning e Processamento Digital de Imagens.
+Clicking an image in the dataset manager sends it to an open detector window.
 
-### Fase Futura — Aplicação Web
+## Goals
 
-* Desenvolver uma aplicação web para inferência;
-* Permitir upload de imagens pelo usuário;
-* Exibir detecções em tempo real;
-* Exibir as máscaras segmentadas produzidas pelo OpenCV;
-* Disponibilizar o modelo treinado online;
-* Criar uma interface amigável para demonstração dos resultados.
+### Current Phase — Object Detection
 
-## Tecnologias Utilizadas
+* Automatically detect mobs in images using YOLO-family models;
+* Evaluate the performance of modern object detection architectures;
+* Compare different YOLO models (Nano, Small, Medium, etc.);
+* Evaluate metrics such as Precision, Recall, mAP50, and mAP50-95;
+* Build a reproducible pipeline for training, validation, and inference;
+* Investigate the impact of different hyperparameters on model performance.
+
+### Next Phase — Segmentation with OpenCV
+
+* Use the bounding boxes produced by YOLO as regions of interest (ROI);
+* Apply classical segmentation techniques with OpenCV;
+* Compare different segmentation algorithms;
+* Evaluate the quality of the generated masks;
+* Investigate hybrid approaches combining Deep Learning and Digital Image Processing.
+
+### Future Phase — Web Application
+
+* Develop a web application for inference;
+* Allow users to upload images;
+* Display detections in real time;
+* Display the segmented masks produced by OpenCV;
+* Make the trained model available online;
+* Build a friendly interface for demonstrating results.
+
+## Technologies Used
 
 * Python
 * PyTorch
@@ -208,52 +217,52 @@ runs/
 * Matplotlib
 * Jupyter Notebook
 * Kaggle CLI
-* Git e GitHub
+* Git and GitHub
 
 ## Roadmap
 
-### Versão 1.0 — Detecção com YOLO
+### Version 1.0 — Detection with YOLO
 
-* [x] Estrutura inicial do projeto
-* [x] Download automatizado do dataset
-* [x] Análise exploratória dos dados
-* [x] Verificação do balanceamento das classes
-* [x] Validação visual das anotações
-* [ ] Treinamento baseline (YOLO26n)
-* [ ] Avaliação de desempenho
-* [ ] Testes de inferência
-* [ ] Comparação entre arquiteturas YOLO
-* [ ] Seleção do modelo final de detecção
+* [x] Initial project structure
+* [x] Automated dataset download
+* [x] Exploratory data analysis
+* [x] Class balance check
+* [x] Visual validation of annotations
+* [ ] Baseline training (YOLO26n)
+* [ ] Performance evaluation
+* [ ] Inference tests
+* [ ] Comparison between YOLO architectures
+* [ ] Selection of the final detection model
 
-### Versão 2.0 — Segmentação com OpenCV
+### Version 2.0 — Segmentation with OpenCV
 
-* [ ] Extração das regiões de interesse (ROI)
-* [ ] Segmentação por Threshold
-* [ ] Segmentação por Otsu
-* [ ] Segmentação por Canny
-* [ ] Segmentação por GrabCut
-* [ ] Segmentação por Watershed
-* [ ] Comparação entre métodos de segmentação
-* [ ] Avaliação qualitativa dos resultados
-* [ ] Integração YOLO + OpenCV
+* [ ] Region of interest (ROI) extraction
+* [ ] Threshold segmentation
+* [ ] Otsu segmentation
+* [ ] Canny segmentation
+* [ ] GrabCut segmentation
+* [ ] Watershed segmentation
+* [ ] Comparison between segmentation methods
+* [ ] Qualitative evaluation of results
+* [ ] YOLO + OpenCV integration
 
-### Versão 3.0 — Aplicação Web
+### Version 3.0 — Web Application
 
-* [ ] Desenvolvimento da API de inferência
-* [ ] Aplicação web
-* [ ] Upload de imagens
-* [ ] Visualização das bounding boxes
-* [ ] Visualização das máscaras segmentadas
-* [ ] Dashboard de resultados
-* [ ] Deploy em nuvem
+* [ ] Inference API development
+* [ ] Web application
+* [ ] Image upload
+* [ ] Bounding box visualization
+* [ ] Segmented mask visualization
+* [ ] Results dashboard
+* [ ] Cloud deployment
 
-## Resultados Esperados
+## Expected Results
 
-* Alta precisão na identificação de mobs;
-* Pipeline automatizado de treinamento e inferência;
-* Base para futuros projetos envolvendo visão computacional em ambientes de jogos;
-* Integração futura com aplicações web.
+* High accuracy in mob identification;
+* Automated training and inference pipeline;
+* A foundation for future projects involving computer vision in game environments;
+* Future integration with web applications.
 
-## Licença
+## License
 
-Este projeto é destinado a fins educacionais, pesquisa e aprendizado em visão computacional e Deep Learning.
+This project is intended for educational purposes, research, and learning in computer vision and Deep Learning.

@@ -82,7 +82,7 @@ class ImageView(QLabel):
         self.setMinimumSize(560, 420)
         self.setStyleSheet("border: 1px solid #555; border-radius: 4px;")
         self._pixmap = None
-        self._placeholder = "Arraste uma imagem aqui ou clique em 'Abrir imagem'"
+        self._placeholder = "Drag an image here or click 'Open image'"
         self.setText(self._placeholder)
 
     def set_image(self, pixmap):
@@ -191,7 +191,7 @@ class DetectorWindow(QMainWindow):
         layout.addWidget(self._build_panel(), stretch=2)
         self.setCentralWidget(central)
 
-        self.statusBar().showMessage("Selecione um modelo para começar.")
+        self.statusBar().showMessage("Select a model to start.")
         self._populate_models()
         self._update_controls()
         self._setup_server()
@@ -222,22 +222,22 @@ class DetectorWindow(QMainWindow):
         panel.setMaximumWidth(420)
         layout = QVBoxLayout(panel)
 
-        model_box = QGroupBox("Modelo")
+        model_box = QGroupBox("Model")
         model_layout = QVBoxLayout(model_box)
         self.model_combo = QComboBox()
         self.model_combo.activated.connect(self._on_model_selected)
-        self.browse_model_btn = QPushButton("Abrir modelo...")
+        self.browse_model_btn = QPushButton("Open model...")
         self.browse_model_btn.clicked.connect(self.browse_model)
-        self.model_info = QLabel("Nenhum modelo carregado.")
+        self.model_info = QLabel("No model loaded.")
         self.model_info.setWordWrap(True)
         device_row = QHBoxLayout()
-        device_row.addWidget(QLabel("Dispositivo:"))
+        device_row.addWidget(QLabel("Device:"))
         self.device_combo = QComboBox()
         self.device_combo.addItem("cpu")
         if torch.cuda.is_available():
             self.device_combo.addItem("cuda")
             self.device_combo.setToolTip(
-                "A GPU pode estar ocupada com treinamento. CPU é mais seguro."
+                "The GPU may be busy training. CPU is safer."
             )
         device_row.addWidget(self.device_combo, stretch=1)
         model_layout.addWidget(self.model_combo)
@@ -245,19 +245,19 @@ class DetectorWindow(QMainWindow):
         model_layout.addWidget(self.model_info)
         model_layout.addLayout(device_row)
 
-        image_box = QGroupBox("Imagem")
+        image_box = QGroupBox("Image")
         image_layout = QHBoxLayout(image_box)
-        self.open_image_btn = QPushButton("Abrir imagem")
+        self.open_image_btn = QPushButton("Open image")
         self.open_image_btn.clicked.connect(self.browse_image)
-        self.save_btn = QPushButton("Salvar resultado")
+        self.save_btn = QPushButton("Save result")
         self.save_btn.clicked.connect(self.save_result)
         image_layout.addWidget(self.open_image_btn)
         image_layout.addWidget(self.save_btn)
 
-        detect_box = QGroupBox("Detecção")
+        detect_box = QGroupBox("Detection")
         detect_layout = QVBoxLayout(detect_box)
         conf_row = QHBoxLayout()
-        conf_row.addWidget(QLabel("Confiança:"))
+        conf_row.addWidget(QLabel("Confidence:"))
         self.conf_slider = QSlider(Qt.Orientation.Horizontal)
         self.conf_slider.setRange(1, 99)
         self.conf_slider.setValue(25)
@@ -267,15 +267,15 @@ class DetectorWindow(QMainWindow):
         self.conf_label.setMinimumWidth(36)
         conf_row.addWidget(self.conf_slider, stretch=1)
         conf_row.addWidget(self.conf_label)
-        self.detect_btn = QPushButton("Detectar")
+        self.detect_btn = QPushButton("Detect")
         self.detect_btn.clicked.connect(self.run_inference)
         detect_layout.addLayout(conf_row)
         detect_layout.addWidget(self.detect_btn)
 
-        results_box = QGroupBox("Resultados")
+        results_box = QGroupBox("Results")
         results_layout = QVBoxLayout(results_box)
         self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["Classe", "Confiança"])
+        self.table.setHorizontalHeaderLabels(["Class", "Confidence"])
         self.table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
         )
@@ -297,7 +297,7 @@ class DetectorWindow(QMainWindow):
     def _populate_models(self):
         self.model_combo.blockSignals(True)
         self.model_combo.clear()
-        self.model_combo.addItem("Selecione um modelo...", None)
+        self.model_combo.addItem("Select a model...", None)
         for path in discover_models(ROOT_DIR):
             self.model_combo.addItem(str(path.relative_to(ROOT_DIR)), str(path))
         self.model_combo.blockSignals(False)
@@ -309,7 +309,7 @@ class DetectorWindow(QMainWindow):
 
     def browse_model(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Selecionar modelo", str(ROOT_DIR), "Pesos YOLO (*.pt)"
+            self, "Select model", str(ROOT_DIR), "YOLO weights (*.pt)"
         )
         if path:
             existing = self.model_combo.findData(path)
@@ -322,7 +322,7 @@ class DetectorWindow(QMainWindow):
             self.load_model(path)
 
     def load_model(self, path):
-        self.statusBar().showMessage(f"Carregando modelo: {Path(path).name} ...")
+        self.statusBar().showMessage(f"Loading model: {Path(path).name} ...")
         self._set_busy(True)
         self.model_loader = ModelLoader(path)
         self.model_loader.loaded.connect(self._on_model_loaded)
@@ -332,22 +332,22 @@ class DetectorWindow(QMainWindow):
     def _on_model_loaded(self, model, names):
         self.model = model
         self.model_names = names
-        self.model_info.setText(f"{model.ckpt_path or 'modelo'}\nClasses: {len(names)}")
-        self.statusBar().showMessage(f"Modelo carregado. {len(names)} classes.")
+        self.model_info.setText(f"{model.ckpt_path or 'model'}\nClasses: {len(names)}")
+        self.statusBar().showMessage(f"Model loaded. {len(names)} classes.")
         self._set_busy(False)
 
     def _on_model_failed(self, error):
         self._set_busy(False)
-        QMessageBox.critical(self, "Erro ao carregar modelo", error)
-        self.statusBar().showMessage("Falha ao carregar modelo.")
+        QMessageBox.critical(self, "Error loading model", error)
+        self.statusBar().showMessage("Failed to load model.")
 
     def browse_image(self):
         start_dir = str(ROOT_DIR)
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Selecionar imagem",
+            "Select image",
             start_dir,
-            "Imagens (*.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff)",
+            "Images (*.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff)",
         )
         if path:
             self.load_image(path)
@@ -355,13 +355,13 @@ class DetectorWindow(QMainWindow):
     def load_image(self, path):
         image = imread_unicode(path)
         if image is None:
-            QMessageBox.warning(self, "Imagem inválida", f"Não foi possível abrir:\n{path}")
+            QMessageBox.warning(self, "Invalid image", f"Could not open:\n{path}")
             return
         self.original_bgr = image
         self.annotated_bgr = None
         self.image_view.set_image(cv_to_qpixmap(image))
         self._clear_results()
-        self.statusBar().showMessage(f"Imagem carregada: {Path(path).name}")
+        self.statusBar().showMessage(f"Image loaded: {Path(path).name}")
         self._update_controls()
 
     def _current_conf(self):
@@ -376,14 +376,14 @@ class DetectorWindow(QMainWindow):
 
     def run_inference(self):
         if self.model is None:
-            QMessageBox.information(self, "Sem modelo", "Carregue um modelo primeiro.")
+            QMessageBox.information(self, "No model", "Load a model first.")
             return
         if self.original_bgr is None:
-            QMessageBox.information(self, "Sem imagem", "Carregue uma imagem primeiro.")
+            QMessageBox.information(self, "No image", "Load an image first.")
             return
 
         self._set_busy(True)
-        self.statusBar().showMessage("Detectando...")
+        self.statusBar().showMessage("Detecting...")
         self.worker = InferenceWorker(
             self.model,
             self.original_bgr,
@@ -399,15 +399,15 @@ class DetectorWindow(QMainWindow):
         self.image_view.set_image(cv_to_qpixmap(annotated))
         self._fill_results(detections)
         self.statusBar().showMessage(
-            f"{len(detections)} detecção(ões) em {elapsed * 1000:.0f} ms "
+            f"{len(detections)} detection(s) in {elapsed * 1000:.0f} ms "
             f"({self.device_combo.currentText()})."
         )
         self._set_busy(False)
 
     def _on_inference_failed(self, error):
         self._set_busy(False)
-        QMessageBox.critical(self, "Erro na detecção", error)
-        self.statusBar().showMessage("Falha na detecção.")
+        QMessageBox.critical(self, "Detection error", error)
+        self.statusBar().showMessage("Detection failed.")
 
     def _fill_results(self, detections):
         self.table.setRowCount(len(detections))
@@ -423,7 +423,7 @@ class DetectorWindow(QMainWindow):
             summary = ", ".join(f"{name}: {n}" for name, n in sorted(counts.items()))
             self.summary_label.setText(summary)
         else:
-            self.summary_label.setText("Nenhuma detecção.")
+            self.summary_label.setText("No detections.")
 
     def _clear_results(self):
         self.table.setRowCount(0)
@@ -431,16 +431,16 @@ class DetectorWindow(QMainWindow):
 
     def save_result(self):
         if self.annotated_bgr is None:
-            QMessageBox.information(self, "Nada para salvar", "Execute uma detecção primeiro.")
+            QMessageBox.information(self, "Nothing to save", "Run a detection first.")
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Salvar resultado", str(ROOT_DIR / "deteccao.jpg"), "Imagem (*.jpg *.png)"
+            self, "Save result", str(ROOT_DIR / "detection.jpg"), "Image (*.jpg *.png)"
         )
         if path:
             if imwrite_unicode(path, self.annotated_bgr):
-                self.statusBar().showMessage(f"Salvo em: {path}")
+                self.statusBar().showMessage(f"Saved to: {path}")
             else:
-                QMessageBox.warning(self, "Erro", "Não foi possível salvar a imagem.")
+                QMessageBox.warning(self, "Error", "Could not save the image.")
 
     def _is_busy(self):
         return not self.detect_btn.isEnabled()

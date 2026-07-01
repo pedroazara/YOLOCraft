@@ -163,9 +163,9 @@ class DetailDialog(QDialog):
         info.setMaximumHeight(120)
         info.setText(
             f"frame: {frame}\n"
-            f"classe: {name} (id original {int(row['class_id'])})\n"
-            f"weather: {meta['weather']} | dist: {row['dist_blocks']:.1f} blocos\n"
-            f"label YOLO: {int(row['class_id'])} "
+            f"class: {name} (original id {int(row['class_id'])})\n"
+            f"weather: {meta['weather']} | dist: {row['dist_blocks']:.1f} blocks\n"
+            f"YOLO label: {int(row['class_id'])} "
             f"{row['cx']:.6f} {row['cy']:.6f} {row['w']:.6f} {row['h']:.6f}"
         )
 
@@ -257,7 +257,7 @@ class DatasetManager(QMainWindow):
         super().__init__()
         self.index = index
         self.worker = None
-        self.setWindowTitle("YOLOCraft - Gerenciador de Dataset")
+        self.setWindowTitle("YOLOCraft - Dataset Manager")
         self.resize(1240, 780)
 
         self.tabs = QTabWidget()
@@ -265,8 +265,8 @@ class DatasetManager(QMainWindow):
         curation.addWidget(self._build_class_panel())
         curation.addWidget(self._build_sample_panel())
         curation.setSizes([440, 800])
-        self.tabs.addTab(curation, "Curadoria")
-        self.tabs.addTab(self._build_prepared_tab(), "Dataset pronto")
+        self.tabs.addTab(curation, "Curation")
+        self.tabs.addTab(self._build_prepared_tab(), "Prepared dataset")
         self.setCentralWidget(self.tabs)
 
         self._populate_classes()
@@ -274,8 +274,8 @@ class DatasetManager(QMainWindow):
         self._refresh_prepared_datasets()
         self.statusBar().showMessage(
             f"{len(self.index.class_ids())} classes | "
-            f"{len(self.index.boxes)} imagens rotuladas | "
-            f"{len(self.index.negative_frames)} negativas"
+            f"{len(self.index.boxes)} labeled images | "
+            f"{len(self.index.negative_frames)} negatives"
         )
 
     def _build_class_panel(self):
@@ -283,19 +283,19 @@ class DatasetManager(QMainWindow):
         layout = QVBoxLayout(panel)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Filtrar classes...")
+        self.search.setPlaceholderText("Filter classes...")
         self.search.textChanged.connect(self._filter_classes)
 
         button_row = QHBoxLayout()
-        select_all = QPushButton("Marcar todas")
+        select_all = QPushButton("Select all")
         select_all.clicked.connect(lambda: self._set_all_checked(True))
-        clear_all = QPushButton("Desmarcar todas")
+        clear_all = QPushButton("Clear all")
         clear_all.clicked.connect(lambda: self._set_all_checked(False))
         button_row.addWidget(select_all)
         button_row.addWidget(clear_all)
 
         self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["Classe", "Imagens"])
+        self.table.setHorizontalHeaderLabels(["Class", "Images"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -313,7 +313,7 @@ class DatasetManager(QMainWindow):
         return panel
 
     def _build_export_box(self):
-        box = QGroupBox("Exportar dataset de treino")
+        box = QGroupBox("Export training dataset")
         layout = QVBoxLayout(box)
 
         ratios = QHBoxLayout()
@@ -332,15 +332,15 @@ class DatasetManager(QMainWindow):
         ratios.addStretch()
 
         self.negatives_check = QCheckBox(
-            f"Incluir negativos ({len(self.index.negative_frames)})"
+            f"Include negatives ({len(self.index.negative_frames)})"
         )
 
         out_row = QHBoxLayout()
-        out_row.addWidget(QLabel("Saída:"))
+        out_row.addWidget(QLabel("Output:"))
         self.out_edit = QLineEdit("yolo")
         out_row.addWidget(self.out_edit, stretch=1)
 
-        self.export_btn = QPushButton("Exportar classes selecionadas")
+        self.export_btn = QPushButton("Export selected classes")
         self.export_btn.clicked.connect(self.export)
         self.progress = QProgressBar()
         self.progress.setVisible(False)
@@ -357,15 +357,15 @@ class DatasetManager(QMainWindow):
         layout = QVBoxLayout(panel)
 
         header = QHBoxLayout()
-        self.sample_title = QLabel("Selecione uma classe para ver amostras")
+        self.sample_title = QLabel("Select a class to view samples")
         self.sample_title.setStyleSheet("font-weight: bold;")
         header.addWidget(self.sample_title, stretch=1)
-        header.addWidget(QLabel("Amostras:"))
+        header.addWidget(QLabel("Samples:"))
         self.sample_count = QSpinBox()
         self.sample_count.setRange(1, 24)
         self.sample_count.setValue(9)
         header.addWidget(self.sample_count)
-        self.shuffle_btn = QPushButton("Atualizar")
+        self.shuffle_btn = QPushButton("Refresh")
         self.shuffle_btn.clicked.connect(self._reload_samples)
         self.shuffle_btn.setEnabled(False)
         header.addWidget(self.shuffle_btn)
@@ -426,7 +426,7 @@ class DatasetManager(QMainWindow):
     def _update_selection_footer(self):
         ids = self._selected_ids()
         total = sum(self.index.count(c) for c in ids)
-        self.selection_footer.setText(f"{len(ids)} classes marcadas | {total} imagens")
+        self.selection_footer.setText(f"{len(ids)} classes selected | {total} images")
 
     def _on_class_clicked(self, row, column):
         self.current_class = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
@@ -438,7 +438,7 @@ class DatasetManager(QMainWindow):
             return
         name = self.index.name(self.current_class)
         count = self.index.count(self.current_class)
-        self.sample_title.setText(f"{name} - {count} imagens (id {self.current_class})")
+        self.sample_title.setText(f"{name} - {count} images (id {self.current_class})")
 
         while self.grid.count():
             widget = self.grid.takeAt(0).widget()
@@ -477,16 +477,16 @@ class DatasetManager(QMainWindow):
         self.split_combo = QComboBox()
         self.split_combo.currentIndexChanged.connect(self._reload_prepared)
         controls.addWidget(self.split_combo)
-        controls.addWidget(QLabel("Amostras:"))
+        controls.addWidget(QLabel("Samples:"))
         self.prepared_count = QSpinBox()
         self.prepared_count.setRange(1, 48)
         self.prepared_count.setValue(12)
         controls.addWidget(self.prepared_count)
-        self.prepared_refresh = QPushButton("Atualizar")
+        self.prepared_refresh = QPushButton("Refresh")
         self.prepared_refresh.clicked.connect(self._reload_prepared)
         controls.addWidget(self.prepared_refresh)
 
-        hint = QLabel("Clique numa imagem para enviá-la ao detector.")
+        hint = QLabel("Click an image to send it to the detector.")
         hint.setStyleSheet("color: #888;")
 
         self.prepared_scroll = QScrollArea()
@@ -586,32 +586,32 @@ class DatasetManager(QMainWindow):
             socket.flush()
             socket.waitForBytesWritten(500)
             socket.disconnectFromServer()
-            self.statusBar().showMessage(f"Enviado ao detector: {Path(image_path).name}")
+            self.statusBar().showMessage(f"Sent to detector: {Path(image_path).name}")
             return
 
         reply = QMessageBox.question(
             self,
-            "Detector fechado",
-            "O detector não está aberto. Deseja abri-lo com esta imagem?",
+            "Detector closed",
+            "The detector is not open. Open it with this image?",
         )
         if reply == QMessageBox.StandardButton.Yes:
             subprocess.Popen(
                 [sys.executable, "-m", "src.detector_gui", str(image_path)],
                 cwd=str(ROOT_DIR),
             )
-            self.statusBar().showMessage("Abrindo detector...")
+            self.statusBar().showMessage("Opening detector...")
 
     def export(self):
         selected = self._selected_ids()
         if not selected:
-            QMessageBox.information(self, "Nenhuma classe", "Marque ao menos uma classe.")
+            QMessageBox.information(self, "No class", "Select at least one class.")
             return
 
         out_dir = self.index.dataset_dir / self.out_edit.text().strip()
         if out_dir.exists():
             reply = QMessageBox.question(
-                self, "Sobrescrever",
-                f"{out_dir} já existe e será substituída. Continuar?",
+                self, "Overwrite",
+                f"{out_dir} already exists and will be replaced. Continue?",
             )
             if reply != QMessageBox.StandardButton.Yes:
                 return
@@ -619,7 +619,7 @@ class DatasetManager(QMainWindow):
         self.export_btn.setEnabled(False)
         self.progress.setVisible(True)
         self.progress.setValue(0)
-        self.statusBar().showMessage("Exportando...")
+        self.statusBar().showMessage("Exporting...")
 
         self.worker = ExportWorker(
             self.index, selected, out_dir,
@@ -638,17 +638,17 @@ class DatasetManager(QMainWindow):
     def _on_export_done(self, out_dir, num_classes):
         self.export_btn.setEnabled(True)
         self.progress.setVisible(False)
-        self.statusBar().showMessage(f"Exportado: {num_classes} classes em {out_dir}")
+        self.statusBar().showMessage(f"Exported: {num_classes} classes to {out_dir}")
         QMessageBox.information(
-            self, "Concluído",
-            f"Dataset gerado em:\n{out_dir}\nClasses: {num_classes}",
+            self, "Done",
+            f"Dataset generated at:\n{out_dir}\nClasses: {num_classes}",
         )
 
     def _on_export_failed(self, error):
         self.export_btn.setEnabled(True)
         self.progress.setVisible(False)
-        self.statusBar().showMessage("Falha na exportação.")
-        QMessageBox.critical(self, "Erro na exportação", error)
+        self.statusBar().showMessage("Export failed.")
+        QMessageBox.critical(self, "Export error", error)
 
     def closeEvent(self, event):
         if self.worker is not None and self.worker.isRunning():
@@ -658,7 +658,7 @@ class DatasetManager(QMainWindow):
 
 def main():
     if not (DATASET_DIR / "boxes.csv").exists():
-        print(f"Dataset não encontrado em {DATASET_DIR}")
+        print(f"Dataset not found at {DATASET_DIR}")
         sys.exit(1)
     app = QApplication(sys.argv)
     window = DatasetManager(DatasetIndex(DATASET_DIR))

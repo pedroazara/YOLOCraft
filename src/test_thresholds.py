@@ -37,5 +37,5 @@ if __name__ == "__main__":
     root = Path(__file__).resolve().parent.parent
     test_thresholds(
         model_path=str(root / "notebooks/runs/detect/train-4/weights/best.pt"),
-        image_path=str(root / "notebooks/testes/spiders.jpg"),
+        image_path=str(root / "notebooks/tests/spiders.jpg"),
     )
