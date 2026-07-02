@@ -5,10 +5,10 @@ DATA_DIR = ROOT_DIR / "data"
 
 DATASETS = {
     "minecraft_mobs": DATA_DIR / "minecraft_mobs" / "minecraft_mobs_yolo",
-    "minecraft_mobs-2": DATA_DIR / "minecraft_mobs-2" / "yolo",
+    "minecraft_mobs-2": DATA_DIR / "minecraft_mobs-2" / "apresentacao",
 }
 
-DEFAULT_DATASET = "minecraft_mobs"
+DEFAULT_DATASET = "minecraft_mobs-2"
 
 
 def get_dataset(name=DEFAULT_DATASET):

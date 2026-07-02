@@ -22,7 +22,7 @@ def train(model_size="n", epochs=150, pretrained_weights=None):
         "x": 4,
     }.get(model_size, 16)
 
-    return model.train(
+    results = model.train(
         data=str(cfg.DATA_YAML),
         epochs=epochs,
         imgsz=768,
@@ -42,6 +42,7 @@ def train(model_size="n", epochs=150, pretrained_weights=None):
         close_mosaic=10,
         device=0 if torch.cuda.is_available() else "cpu",
     )
+    return model, results
 
 
 if __name__ == "__main__":
