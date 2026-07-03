@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset
+data/
+
+# YOLO outputs (pesos pré-treinados/experimentais são baixados ou regenerados, não versionados)
+runs/
+*.pt
+!models/production/*.pt
+
+# Models
+models/*.onnx
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,21 @@
+train: train/images
+val: val/images
+test: test/images
+nc: 16
+names:
+  0: cave_spider
+  1: creeper
+  2: enderman
+  3: skeleton
+  4: slime
+  5: spider
+  6: zombie
+  7: iron_golem
+  8: wolf
+  9: cat
+  10: chicken
+  11: cow
+  12: frog
+  13: horse
+  14: pig
+  15: sheep
