@@ -39,7 +39,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = ROOT_DIR / "data" / "minecraft_mobs-2"
 IMAGES_DIR = DATASET_DIR / "images"
 THUMB_WIDTH = 230
@@ -596,7 +596,7 @@ class DatasetManager(QMainWindow):
         )
         if reply == QMessageBox.StandardButton.Yes:
             subprocess.Popen(
-                [sys.executable, "-m", "src.detector_gui", str(image_path)],
+                [sys.executable, "-m", "src.gui.detector_gui", str(image_path)],
                 cwd=str(ROOT_DIR),
             )
             self.statusBar().showMessage("Abrindo detector...")

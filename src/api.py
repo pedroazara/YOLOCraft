@@ -13,7 +13,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from ultralytics import YOLO, SAM
 
-from src.segmentation import MobSegmenter  # segmentação clássica: otsu / hsv / grabcut / watershed
+from src.segmentation.segmentation import MobSegmenter  # segmentação clássica: otsu / hsv / grabcut / watershed
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DET_MODEL_PATH = ROOT_DIR / "models" / "production" / "MOB_DET_YOLO_V1.pt"

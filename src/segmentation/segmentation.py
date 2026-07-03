@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
-from src.classic_segmentation import crop_with_margin, mask_to_polygon, segment_roi
+from src.segmentation.classic_segmentation import crop_with_margin, mask_to_polygon, segment_roi
 
 
 def _color_for_class(name: str) -> tuple[int, int, int]:

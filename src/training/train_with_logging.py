@@ -2,12 +2,12 @@ from pathlib import Path
 import time
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from ultralytics import YOLO
 import torch
 import src.config as cfg
-from src.training_logger import TrainingLogger
+from src.training.training_logger import TrainingLogger
 
 
 def train(model_size="n", epochs=100, batch_size=16, imgsz=768, notes=""):

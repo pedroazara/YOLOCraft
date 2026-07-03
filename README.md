@@ -37,21 +37,19 @@ Dataset:
 
 https://www.kaggle.com/datasets/pierreayfri/minecraft-mobs/data
 
-Um subconjunto de 16 classes (`data/minecraft_mobs-2/apresentacao`) foi curado com `src/dataset_manager.py` para o modelo de apresentação: cave_spider, creeper, enderman, skeleton, slime, spider, zombie, iron_golem, wolf, cat, chicken, cow, frog, horse, pig, sheep.
+Um subconjunto de 16 classes (`data/minecraft_mobs-2/apresentacao`) foi curado com `src/data/dataset_manager.py` para o modelo de apresentação: cave_spider, creeper, enderman, skeleton, slime, spider, zombie, iron_golem, wolf, cat, chicken, cow, frog, horse, pig, sheep.
 
 ## Estado Atual
 
 * Modelo de detecção (YOLO26s) treinado nas 16 classes curadas, 100 épocas: precision = 0.9906, recall = 0.9878, mAP50 = 0.9935, mAP50-95 = 0.9679.
 * Segmentação em dois modos: SAM (MobileSAM, automático) e 4 métodos clássicos configuráveis (Otsu, HSV, GrabCut, Watershed), além de um modo "auto" que escolhe entre eles.
-* API (`src/api.py`) completa: detecção, segmentação (ambos os modos), imagens de teste filtráveis por mob, checagens de disponibilidade.
+* API (`src/api.py`) completa e publicada, com cache de detecção por imagem (evita rodar o YOLO de novo entre os métodos de segmentação no modo comparativo).
+* Deploy em produção no Hugging Face Spaces (Docker), integrado ao frontend.
 * Histórico de treinos em `training_logs/training_history.csv`.
-* Frontend em desenvolvimento em repositório separado, consumindo a API pelo contrato descrito em `docs/frontend_integration.md`. Testado via túnel (ngrok) durante o desenvolvimento.
 
-Pendências antes do deploy final:
+Pendências:
 
-* Validação cruzada (k-fold, k=5) implementada em notebook, execução ainda pendente.
-* Pesos do modelo (`*.pt`) não estão versionados no git (`.gitignore`) — precisam ser disponibilizados de outra forma para o build do Hugging Face Spaces.
-* Dockerfile para o Hugging Face Spaces ainda não criado.
+* Validação cruzada (k-fold, k=5) implementada em notebook (`notebooks/5_cross_validation/`), execução ainda pendente.
 
 ## Estrutura do Projeto
 
@@ -71,20 +69,28 @@ YOLOCraft/
 │   └── testes/                  # imagens de teste manual
 │
 ├── src/
+│   ├── api.py                   # API de inferência (FastAPI) — entrypoint do deploy
 │   ├── config.py                # seleção de dataset (registro de paths)
-│   ├── convert_dataset.py       # converte CSV de anotações para formato YOLO
-│   ├── training_logger.py       # registra histórico de treinos (JSON/CSV)
-│   ├── train_with_logging.py    # treino com registro automático
-│   ├── train_improved.py        # treino com hiperparâmetros de augmentation
+│   ├── utils.py
 │   ├── test_thresholds.py       # varredura de confidence threshold
-│   ├── detector_gui.py          # app desktop (PyQt6) para testar modelos
-│   ├── detector_seg.py          # app desktop (PyQt6) comparando SAM x métodos clássicos
-│   ├── dataset_manager.py       # app desktop (PyQt6) para curar o dataset
-│   ├── segmentation.py          # pipeline de segmentação clássica (Otsu/HSV/GrabCut/Watershed)
-│   ├── classic_segmentation.py  # implementação dos métodos clássicos
-│   ├── sam_segmentation.py      # wrapper de segmentação via SAM
-│   ├── api.py                   # API de inferência (FastAPI)
-│   └── utils.py
+│   │
+│   ├── data/
+│   │   ├── convert_dataset.py   # converte CSV de anotações para formato YOLO
+│   │   └── dataset_manager.py   # app desktop (PyQt6) para curar o dataset
+│   │
+│   ├── training/
+│   │   ├── training_logger.py   # registra histórico de treinos (JSON/CSV)
+│   │   ├── train_with_logging.py
+│   │   └── train_improved.py    # treino com hiperparâmetros de augmentation
+│   │
+│   ├── segmentation/
+│   │   ├── segmentation.py      # pipeline de segmentação clássica (Otsu/HSV/GrabCut/Watershed)
+│   │   ├── classic_segmentation.py
+│   │   └── sam_segmentation.py  # wrapper de segmentação via SAM
+│   │
+│   └── gui/
+│       ├── detector_gui.py      # app desktop (PyQt6) para testar modelos
+│       └── detector_seg.py      # app desktop (PyQt6) comparando SAM x métodos clássicos
 │
 ├── scripts/
 │   └── download_dataset.py      # download automatizado via Kaggle CLI
@@ -95,9 +101,13 @@ YOLOCraft/
 ├── static/
 │   └── samples/                 # imagens de teste servidas pela API (images/ + labels/ + data.yaml)
 │
+├── models/
+│   └── production/              # modelo em produção (MOB_DET_YOLO_V1.pt, via Git LFS)
+│
 ├── pretrained_models/           # pesos pré-treinados (YOLO, MobileSAM)
 ├── training_logs/               # histórico de treinos
 ├── requirements.txt
+├── Dockerfile
 ├── README.md
 └── .gitignore
 ```
@@ -182,14 +192,14 @@ Os dados serão armazenados em:
 data/minecraft_mobs-2/
 ```
 
-Converta as anotações (CSV) para o formato YOLO com `src/convert_dataset.py`, ou use `src/dataset_manager.py` para selecionar classes e exportar um subconjunto curado.
+Converta as anotações (CSV) para o formato YOLO com `src/data/convert_dataset.py`, ou use `src/data/dataset_manager.py` para selecionar classes e exportar um subconjunto curado.
 
 ## Treinamento
 
-O treinamento é feito nos notebooks de `notebooks/3_experimentos/`, que registram cada execução via `src/training_logger.py`. Também há um ponto de entrada em script:
+O treinamento é feito nos notebooks de `notebooks/3_experimentos/`, que registram cada execução via `src/training/training_logger.py`. Também há um ponto de entrada em script:
 
 ```bash
-python -m src.train_with_logging
+python -m src.training.train_with_logging
 ```
 
 Cada treino gera:
@@ -211,8 +221,8 @@ Validação cruzada (k-fold, k=5) disponível em `notebooks/5_cross_validation/`
 
 Duas ferramentas desktop para testar localmente:
 
-* **`src/detector_gui.py`** — carrega um modelo `.pt` e testa imagens com ajuste de confidence threshold.
-* **`src/detector_seg.py`** — compara lado a lado a segmentação via SAM e os métodos clássicos.
+* **`src/gui/detector_gui.py`** — carrega um modelo `.pt` e testa imagens com ajuste de confidence threshold.
+* **`src/gui/detector_seg.py`** — compara lado a lado a segmentação via SAM e os métodos clássicos.
 
 API (`src/api.py`):
 

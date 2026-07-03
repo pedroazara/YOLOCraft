@@ -4,7 +4,7 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 def convert_minecraft_mobs2(val_ratio=0.1, test_ratio=0.1, seed=42, include_negatives=True):
