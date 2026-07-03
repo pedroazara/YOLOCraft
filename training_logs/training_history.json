@@ -15,5 +15,22 @@
     "notes": "Dataset 1",
     "hyperparameters": {},
     "class_metrics": {}
+  },
+  {
+    "id": "20260702_153623",
+    "timestamp": "2026-07-02T15:36:23.525161",
+    "date": "02/07/2026",
+    "time": "15:36:23",
+    "model": "yolo26s",
+    "epochs": 100,
+    "batch_size": 16,
+    "imgsz": 768,
+    "map50": 0.9935,
+    "map50_95": 0.9679,
+    "train_time_hours": 4.85,
+    "gpu": "NVIDIA GeForce RTX 4060 Ti",
+    "notes": "Dataset 2",
+    "hyperparameters": {},
+    "class_metrics": {}
   }
 ]

@@ -1,14 +1,12 @@
 # YOLOCraft
 
-Detecção e segmentação de mobs do Minecraft utilizando YOLO e visão computacional.
+Detecção e segmentação de mobs do Minecraft utilizando YOLO, SAM e visão computacional.
 
 ## Visão Geral
 
-YOLOCraft é um projeto de Deep Learning voltado para a identificação automática de mobs do Minecraft em imagens. O objetivo é treinar modelos da família YOLO para detectar e/ou segmentar entidades do jogo, permitindo aplicações em visão computacional, aprendizado de máquina e experimentação com datasets de jogos.
+YOLOCraft identifica automaticamente mobs do Minecraft em imagens. Um modelo YOLO detecta a classe e a bounding box de cada mob; o SAM (Segment Anything Model) usa essa box como prompt para gerar a máscara de segmentação do mob. Uma API expõe esse pipeline para uma aplicação web.
 
-Atualmente, o foco do projeto está no treinamento, avaliação e testes de modelos de detecção e segmentação. Em versões futuras, o modelo treinado será integrado a uma aplicação web para inferência em tempo real.
-
-O projeto foi desenvolvido como uma oportunidade de estudo prático em:
+O projeto foi desenvolvido como estudo prático em:
 
 * Computer Vision
 * Object Detection
@@ -20,13 +18,24 @@ O projeto foi desenvolvido como uma oportunidade de estudo prático em:
 
 O dataset utilizado é:
 
-* Minecraft Mobs YOLO Dataset
+* Minecraft Mobs
 * Fonte: Kaggle
-* Classes correspondentes a diferentes mobs do Minecraft
+* 87 classes de mobs, mais de 27 mil imagens capturadas em jogo
+* Anotações em CSV (bounding boxes normalizadas + metadados de cena como clima e distância), convertidas para o formato YOLO pelos scripts do projeto
 
 Dataset:
 
-https://www.kaggle.com/datasets/dracotlw/minecraft-mobs-yolo-dataset/data
+https://www.kaggle.com/datasets/pierreayfri/minecraft-mobs/data
+
+Um subconjunto de 16 classes (`data/minecraft_mobs-2/apresentacao`) foi curado com `src/dataset_manager.py` para o modelo de apresentação: cave_spider, creeper, enderman, skeleton, slime, spider, zombie, iron_golem, wolf, cat, chicken, cow, frog, horse, pig, sheep.
+
+## Estado Atual do Modelo
+
+* Modelo em treinamento (YOLO26s) no subconjunto curado de 16 classes — métricas parciais observadas: precision ≈ 0.98, recall ≈ 0.98, mAP50 ≈ 0.99, mAP50-95 ≈ 0.95.
+* Modelo consolidado anterior (YOLO26s, 4 classes — creeper, skeleton, spider, zombie), 100 épocas: mAP50 = 0.9522, mAP50-95 = 0.8165.
+* Histórico completo de treinos em `training_logs/training_history.csv`, gerado por `src/training_logger.py`.
+* API (`src/api.py`) funcional: detecção (YOLO) + segmentação (MobileSAM) integradas no endpoint `/predict`.
+* Frontend em desenvolvimento em repositório separado, consumindo a API pelo contrato descrito em `docs/frontend_integration.md`. Testado via túnel (ngrok) durante o desenvolvimento; deploy definitivo da API ainda pendente.
 
 ## Estrutura do Projeto
 
@@ -34,21 +43,36 @@ https://www.kaggle.com/datasets/dracotlw/minecraft-mobs-yolo-dataset/data
 YOLOCraft/
 │
 ├── data/
-│   └── minecraft_mobs/
+│   ├── minecraft_mobs/          # dataset inicial (baseline, 4 classes)
+│   └── minecraft_mobs-2/        # dataset principal (87 classes) + subconjuntos curados
 │
 ├── notebooks/
+│   ├── 1_exploracao/            # análise exploratória e visualização de labels
+│   ├── 2_baseline/              # treinamento baseline
+│   ├── 3_experimentos/          # experimentos de treinamento (usa TrainingLogger)
+│   ├── 4_segmentation/          # testes de segmentação com SAM
+│   └── testes/                  # imagens de teste manual
 │
 ├── src/
-│   ├── train.py
-│   ├── predict.py
-│   ├── evaluate.py
+│   ├── config.py                # seleção de dataset (registro de paths)
+│   ├── convert_dataset.py       # converte CSV de anotações para formato YOLO
+│   ├── training_logger.py       # registra histórico de treinos (JSON/CSV)
+│   ├── train_with_logging.py    # treino com registro automático
+│   ├── train_improved.py        # treino com hiperparâmetros de augmentation
+│   ├── test_thresholds.py       # varredura de confidence threshold
+│   ├── detector_gui.py          # app desktop (PyQt6) para testar modelos
+│   ├── dataset_manager.py       # app desktop (PyQt6) para curar o dataset
+│   ├── api.py                   # API de inferência (FastAPI)
 │   └── utils.py
 │
-├── models/
+├── scripts/
+│   └── download_dataset.py      # download automatizado via Kaggle CLI
 │
-├── runs/
+├── docs/
+│   └── frontend_integration.md  # contrato da API para o frontend
 │
-├── download_dataset.py
+├── pretrained_models/           # pesos pré-treinados (YOLO, MobileSAM)
+├── training_logs/               # histórico de treinos
 ├── requirements.txt
 ├── README.md
 └── .gitignore
@@ -119,89 +143,81 @@ kaggle datasets list -s minecraft
 Após autenticar sua conta:
 
 ```bash
-python download_dataset.py
+python scripts/download_dataset.py
 ```
 
 O script irá:
 
 * Verificar se o dataset já existe localmente;
 * Fazer o download apenas quando necessário;
-* Organizar automaticamente os arquivos do projeto.
+* Extrair os arquivos.
 
 Os dados serão armazenados em:
 
 ```text
-data/minecraft_mobs/
+data/minecraft_mobs-2/
 ```
+
+Converta as anotações (CSV) para o formato YOLO com `src/convert_dataset.py`, ou use `src/dataset_manager.py` para selecionar classes e exportar um subconjunto curado.
 
 ## Treinamento
 
-Exemplo de treinamento com YOLO:
+O treinamento é feito nos notebooks de `notebooks/3_experimentos/`, que registram cada execução via `src/training_logger.py`. Também há um ponto de entrada em script:
 
 ```bash
-python src/train.py
+python -m src.train_with_logging
 ```
 
-Durante o treinamento serão gerados:
+Cada treino gera:
 
 * Pesos do modelo
 * Métricas de validação
 * Curvas de aprendizado
-* Resultados de inferência
+* Um registro em `training_logs/`
 
-Os resultados serão salvos em:
+Os resultados de cada execução ficam em:
 
 ```text
-runs/
+notebooks/3_experimentos/runs/
 ```
 
 ## Inferência
 
-Para realizar previsões em novas imagens:
+Duas formas de rodar inferência:
+
+* **App desktop** (`src/detector_gui.py`): carrega um modelo `.pt`, permite ajustar o confidence threshold e testar imagens.
+* **API** (`src/api.py`): endpoint `POST /predict`, recebe uma imagem e devolve as detecções (classe, confiança, box) e a segmentação (polígono da máscara, via SAM).
 
 ```bash
-python src/predict.py
-```
-
-Os resultados serão salvos no diretório:
-
-```text
-runs/
+uvicorn src.api:app --reload --port 8000
+python -m src.detector_gui
 ```
 
 ## Objetivos
 
-### Fase Atual — Detecção de Objetos
+### Detecção de Objetos
 
 * Detectar mobs automaticamente em imagens utilizando modelos da família YOLO;
-* Avaliar o desempenho de arquiteturas modernas de detecção de objetos;
-* Comparar diferentes modelos YOLO (Nano, Small, Medium, etc.);
 * Avaliar métricas como Precision, Recall, mAP50 e mAP50-95;
-* Desenvolver um pipeline reproduzível para treinamento, validação e inferência;
-* Investigar o impacto de diferentes hiperparâmetros no desempenho do modelo.
+* Pipeline reproduzível de treinamento, validação e inferência, com histórico registrado.
 
-### Próxima Fase — Segmentação com OpenCV
+### Segmentação
 
-* Utilizar as bounding boxes produzidas pelo YOLO como regiões de interesse (ROI);
-* Aplicar técnicas clássicas de segmentação utilizando OpenCV;
-* Comparar diferentes algoritmos de segmentação;
-* Avaliar a qualidade das máscaras geradas;
-* Investigar abordagens híbridas combinando Deep Learning e Processamento Digital de Imagens.
+* Usar as bounding boxes do YOLO como prompt para o SAM (Segment Anything Model);
+* Gerar máscaras de segmentação por instância, sem necessidade de treino adicional.
 
-### Fase Futura — Aplicação Web
+### Aplicação Web
 
-* Desenvolver uma aplicação web para inferência;
-* Permitir upload de imagens pelo usuário;
-* Exibir detecções em tempo real;
-* Exibir as máscaras segmentadas produzidas pelo OpenCV;
-* Disponibilizar o modelo treinado online;
-* Criar uma interface amigável para demonstração dos resultados.
+* API de inferência (detecção + segmentação) servindo um frontend;
+* Upload de imagem, visualização das detecções e das máscaras segmentadas.
 
 ## Tecnologias Utilizadas
 
 * Python
 * PyTorch
-* Ultralytics YOLO
+* Ultralytics YOLO e SAM
+* FastAPI / Uvicorn
+* PyQt6
 * OpenCV
 * NumPy
 * Pandas
@@ -219,40 +235,37 @@ runs/
 * [x] Análise exploratória dos dados
 * [x] Verificação do balanceamento das classes
 * [x] Validação visual das anotações
-* [ ] Treinamento baseline (YOLO26n)
-* [ ] Avaliação de desempenho
-* [ ] Testes de inferência
-* [ ] Comparação entre arquiteturas YOLO
-* [ ] Seleção do modelo final de detecção
+* [x] Treinamento baseline
+* [x] Avaliação de desempenho
+* [x] Testes de inferência
+* [x] Comparação entre arquiteturas YOLO
+* [x] Seleção do modelo final de detecção
 
-### Versão 2.0 — Segmentação com OpenCV
+### Versão 2.0 — Segmentação
 
-* [ ] Extração das regiões de interesse (ROI)
-* [ ] Segmentação por Threshold
-* [ ] Segmentação por Otsu
-* [ ] Segmentação por Canny
-* [ ] Segmentação por GrabCut
-* [ ] Segmentação por Watershed
-* [ ] Comparação entre métodos de segmentação
-* [ ] Avaliação qualitativa dos resultados
-* [ ] Integração YOLO + OpenCV
+* [x] Extração das regiões de interesse (ROI) via bounding boxes do YOLO
+* [x] Integração YOLO + SAM (MobileSAM), sem treino adicional
+* [x] Conversão de máscara para polígono
+* [ ] Avaliação qualitativa dos resultados em mais classes
+
+Abordagem original (segmentação clássica com OpenCV — Threshold, Otsu, Canny, GrabCut, Watershed) foi substituída pelo SAM, que generaliza sem necessidade de ajuste manual por classe.
 
 ### Versão 3.0 — Aplicação Web
 
-* [ ] Desenvolvimento da API de inferência
-* [ ] Aplicação web
-* [ ] Upload de imagens
-* [ ] Visualização das bounding boxes
-* [ ] Visualização das máscaras segmentadas
+* [x] Desenvolvimento da API de inferência
+* [x] Upload de imagens
+* [x] Visualização das bounding boxes
+* [x] Visualização das máscaras segmentadas
+* [ ] Aplicação web (em desenvolvimento em repositório separado)
 * [ ] Dashboard de resultados
-* [ ] Deploy em nuvem
+* [ ] Deploy em nuvem da API
 
 ## Resultados Esperados
 
 * Alta precisão na identificação de mobs;
 * Pipeline automatizado de treinamento e inferência;
 * Base para futuros projetos envolvendo visão computacional em ambientes de jogos;
-* Integração futura com aplicações web.
+* Integração com aplicação web para inferência em tempo real.
 
 ## Licença
 
