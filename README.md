@@ -1,10 +1,20 @@
+---
+title: YOLOCraft
+emoji: 🎮
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # YOLOCraft
 
 Detecção e segmentação de mobs do Minecraft utilizando YOLO, SAM e visão computacional.
 
 ## Visão Geral
 
-YOLOCraft identifica automaticamente mobs do Minecraft em imagens. Um modelo YOLO detecta a classe e a bounding box de cada mob; o SAM (Segment Anything Model) usa essa box como prompt para gerar a máscara de segmentação do mob. Uma API expõe esse pipeline para uma aplicação web.
+YOLOCraft identifica automaticamente mobs do Minecraft em imagens. Um modelo YOLO detecta a classe e a bounding box de cada mob; a máscara de segmentação é gerada via SAM (Segment Anything Model) ou por métodos clássicos de visão computacional (Otsu, HSV, GrabCut, Watershed), com um modo comparativo entre eles. Uma API expõe esse pipeline para uma aplicação web.
 
 O projeto foi desenvolvido como estudo prático em:
 
@@ -29,13 +39,19 @@ https://www.kaggle.com/datasets/pierreayfri/minecraft-mobs/data
 
 Um subconjunto de 16 classes (`data/minecraft_mobs-2/apresentacao`) foi curado com `src/dataset_manager.py` para o modelo de apresentação: cave_spider, creeper, enderman, skeleton, slime, spider, zombie, iron_golem, wolf, cat, chicken, cow, frog, horse, pig, sheep.
 
-## Estado Atual do Modelo
+## Estado Atual
 
-* Modelo em treinamento (YOLO26s) no subconjunto curado de 16 classes — métricas parciais observadas: precision ≈ 0.98, recall ≈ 0.98, mAP50 ≈ 0.99, mAP50-95 ≈ 0.95.
-* Modelo consolidado anterior (YOLO26s, 4 classes — creeper, skeleton, spider, zombie), 100 épocas: mAP50 = 0.9522, mAP50-95 = 0.8165.
-* Histórico completo de treinos em `training_logs/training_history.csv`, gerado por `src/training_logger.py`.
-* API (`src/api.py`) funcional: detecção (YOLO) + segmentação (MobileSAM) integradas no endpoint `/predict`.
-* Frontend em desenvolvimento em repositório separado, consumindo a API pelo contrato descrito em `docs/frontend_integration.md`. Testado via túnel (ngrok) durante o desenvolvimento; deploy definitivo da API ainda pendente.
+* Modelo de detecção (YOLO26s) treinado nas 16 classes curadas, 100 épocas: precision = 0.9906, recall = 0.9878, mAP50 = 0.9935, mAP50-95 = 0.9679.
+* Segmentação em dois modos: SAM (MobileSAM, automático) e 4 métodos clássicos configuráveis (Otsu, HSV, GrabCut, Watershed), além de um modo "auto" que escolhe entre eles.
+* API (`src/api.py`) completa: detecção, segmentação (ambos os modos), imagens de teste filtráveis por mob, checagens de disponibilidade.
+* Histórico de treinos em `training_logs/training_history.csv`.
+* Frontend em desenvolvimento em repositório separado, consumindo a API pelo contrato descrito em `docs/frontend_integration.md`. Testado via túnel (ngrok) durante o desenvolvimento.
+
+Pendências antes do deploy final:
+
+* Validação cruzada (k-fold, k=5) implementada em notebook, execução ainda pendente.
+* Pesos do modelo (`*.pt`) não estão versionados no git (`.gitignore`) — precisam ser disponibilizados de outra forma para o build do Hugging Face Spaces.
+* Dockerfile para o Hugging Face Spaces ainda não criado.
 
 ## Estrutura do Projeto
 
@@ -51,6 +67,7 @@ YOLOCraft/
 │   ├── 2_baseline/              # treinamento baseline
 │   ├── 3_experimentos/          # experimentos de treinamento (usa TrainingLogger)
 │   ├── 4_segmentation/          # testes de segmentação com SAM
+│   ├── 5_cross_validation/      # validação cruzada (k-fold)
 │   └── testes/                  # imagens de teste manual
 │
 ├── src/
@@ -61,7 +78,11 @@ YOLOCraft/
 │   ├── train_improved.py        # treino com hiperparâmetros de augmentation
 │   ├── test_thresholds.py       # varredura de confidence threshold
 │   ├── detector_gui.py          # app desktop (PyQt6) para testar modelos
+│   ├── detector_seg.py          # app desktop (PyQt6) comparando SAM x métodos clássicos
 │   ├── dataset_manager.py       # app desktop (PyQt6) para curar o dataset
+│   ├── segmentation.py          # pipeline de segmentação clássica (Otsu/HSV/GrabCut/Watershed)
+│   ├── classic_segmentation.py  # implementação dos métodos clássicos
+│   ├── sam_segmentation.py      # wrapper de segmentação via SAM
 │   ├── api.py                   # API de inferência (FastAPI)
 │   └── utils.py
 │
@@ -70,6 +91,9 @@ YOLOCraft/
 │
 ├── docs/
 │   └── frontend_integration.md  # contrato da API para o frontend
+│
+├── static/
+│   └── samples/                 # imagens de teste servidas pela API (images/ + labels/ + data.yaml)
 │
 ├── pretrained_models/           # pesos pré-treinados (YOLO, MobileSAM)
 ├── training_logs/               # histórico de treinos
@@ -181,17 +205,32 @@ Os resultados de cada execução ficam em:
 notebooks/3_experimentos/runs/
 ```
 
-## Inferência
+Validação cruzada (k-fold, k=5) disponível em `notebooks/5_cross_validation/`.
 
-Duas formas de rodar inferência:
+## Inferência e API
 
-* **App desktop** (`src/detector_gui.py`): carrega um modelo `.pt`, permite ajustar o confidence threshold e testar imagens.
-* **API** (`src/api.py`): endpoint `POST /predict`, recebe uma imagem e devolve as detecções (classe, confiança, box) e a segmentação (polígono da máscara, via SAM).
+Duas ferramentas desktop para testar localmente:
+
+* **`src/detector_gui.py`** — carrega um modelo `.pt` e testa imagens com ajuste de confidence threshold.
+* **`src/detector_seg.py`** — compara lado a lado a segmentação via SAM e os métodos clássicos.
+
+API (`src/api.py`):
 
 ```bash
 uvicorn src.api:app --reload --port 8000
-python -m src.detector_gui
 ```
+
+| Endpoint | Método | Descrição |
+| --- | --- | --- |
+| `/` | GET | status básico da API |
+| `/health`, `/ping` | GET | checagem de disponibilidade |
+| `/samples/classes` | GET | mobs disponíveis nas imagens de teste |
+| `/samples` | GET | imagens de teste aleatórias, filtráveis por mob (`?mob=creeper&count=4`) |
+| `/predict` | POST | detecção (YOLO) + segmentação via SAM |
+| `/predict/classic` | POST | detecção (YOLO) + segmentação clássica (`?method=otsu\|hsv\|grabcut\|watershed\|auto`, parâmetros ajustáveis) |
+| `/predict/classic/visualize` | POST | mesma resposta de `/predict/classic`, mas devolve um PNG anotado |
+
+Contrato completo (formato de resposta e parâmetros) em `docs/frontend_integration.md`.
 
 ## Objetivos
 
@@ -203,13 +242,14 @@ python -m src.detector_gui
 
 ### Segmentação
 
-* Usar as bounding boxes do YOLO como prompt para o SAM (Segment Anything Model);
-* Gerar máscaras de segmentação por instância, sem necessidade de treino adicional.
+* Dois modos: SAM (automático, sem treino adicional) e métodos clássicos de visão computacional (Otsu, HSV, GrabCut, Watershed), com parâmetros ajustáveis;
+* Modo comparativo entre os métodos, todos usando a bounding box do YOLO como ROI;
+* Conversão de máscara para polígono, pronta para overlay no frontend.
 
 ### Aplicação Web
 
 * API de inferência (detecção + segmentação) servindo um frontend;
-* Upload de imagem, visualização das detecções e das máscaras segmentadas.
+* Upload de imagem ou seleção de imagens de teste por mob, visualização das detecções e das máscaras segmentadas.
 
 ## Tecnologias Utilizadas
 
@@ -240,15 +280,15 @@ python -m src.detector_gui
 * [x] Testes de inferência
 * [x] Comparação entre arquiteturas YOLO
 * [x] Seleção do modelo final de detecção
+* [ ] Validação cruzada (k-fold, k=5) — notebook pronto, execução pendente
 
 ### Versão 2.0 — Segmentação
 
 * [x] Extração das regiões de interesse (ROI) via bounding boxes do YOLO
 * [x] Integração YOLO + SAM (MobileSAM), sem treino adicional
+* [x] Segmentação clássica (Otsu, HSV, GrabCut, Watershed) como modo alternativo/comparativo
 * [x] Conversão de máscara para polígono
-* [ ] Avaliação qualitativa dos resultados em mais classes
-
-Abordagem original (segmentação clássica com OpenCV — Threshold, Otsu, Canny, GrabCut, Watershed) foi substituída pelo SAM, que generaliza sem necessidade de ajuste manual por classe.
+* [ ] Avaliação qualitativa comparando os métodos em mais classes
 
 ### Versão 3.0 — Aplicação Web
 
@@ -256,9 +296,10 @@ Abordagem original (segmentação clássica com OpenCV — Threshold, Otsu, Cann
 * [x] Upload de imagens
 * [x] Visualização das bounding boxes
 * [x] Visualização das máscaras segmentadas
+* [x] Imagens de teste servidas pela própria API, filtráveis por mob
 * [ ] Aplicação web (em desenvolvimento em repositório separado)
 * [ ] Dashboard de resultados
-* [ ] Deploy em nuvem da API
+* [ ] Deploy em nuvem da API (Hugging Face Spaces)
 
 ## Resultados Esperados
 

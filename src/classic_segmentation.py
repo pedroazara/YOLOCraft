@@ -8,10 +8,11 @@ restringir o problema a uma região pequena — isso torna otsu/hsv/grabcut bem
 mais confiáveis do que aplicá-los na imagem inteira.
 
 Métodos disponíveis:
-- "otsu":    limiarização de Otsu no canal de saturação (HSV), dentro da ROI.
-- "hsv":     diferença de cor em HSV entre a região da box (mob) e o resto da ROI (fundo).
-- "grabcut": GrabCut do OpenCV, inicializado com a própria bbox do YOLO.
-- "auto":    tenta grabcut e cai para hsv/otsu se o resultado parecer ruim.
+- "otsu":      limiarização de Otsu no canal de saturação (HSV), dentro da ROI.
+- "hsv":       diferença de cor em HSV entre a região da box (mob) e o resto da ROI (fundo).
+- "grabcut":   GrabCut do OpenCV, inicializado com a própria bbox do YOLO.
+- "watershed": limiarização de Otsu + distance transform, separado por watershed.
+- "auto":      tenta grabcut e cai para hsv/otsu se o resultado parecer ruim.
 """
 
 from __future__ import annotations
@@ -105,10 +106,13 @@ def segment_otsu(roi: np.ndarray, box_local: tuple[int, int, int, int]) -> np.nd
     return _refine_mask(mask)
 
 
-def segment_hsv(roi: np.ndarray, box_local: tuple[int, int, int, int]) -> np.ndarray:
+def segment_hsv(
+    roi: np.ndarray, box_local: tuple[int, int, int, int], threshold: float = 2.2
+) -> np.ndarray:
     """Modela a cor do fundo a partir da região da ROI fora da box e marca como mob todo
     pixel cuja cor em HSV se distancia o suficiente desse modelo (distância tipo z-score,
-    com correção para o matiz ser circular)."""
+    com correção para o matiz ser circular). `threshold` menor = mais sensível (marca mais
+    pixels como mob); maior = mais conservador."""
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV).astype(np.float32)
     h, w = roi.shape[:2]
     x1, y1, x2, y2 = box_local
@@ -127,7 +131,7 @@ def segment_hsv(roi: np.ndarray, box_local: tuple[int, int, int, int]) -> np.nda
     diff[:, :, 0] = np.minimum(hue_diff, np.abs(180 / bg_std[0] - hue_diff))
     dist = np.sqrt((diff ** 2).sum(axis=2))
 
-    mask = np.where(dist > 2.2, 255, 0).astype(np.uint8)
+    mask = np.where(dist > threshold, 255, 0).astype(np.uint8)
     return _refine_mask(mask)
 
 
@@ -155,7 +159,64 @@ def segment_grabcut(roi: np.ndarray, box_local: tuple[int, int, int, int], itera
     return _refine_mask(binary)
 
 
-def segment_roi(roi: np.ndarray, box_local: tuple[int, int, int, int], method: str = "grabcut") -> np.ndarray:
+def segment_watershed(
+    roi: np.ndarray, box_local: tuple[int, int, int, int], fg_ratio: float = 0.5
+) -> np.ndarray:
+    """Watershed: trata a ROI como um relevo topográfico e a "inunda" a partir de marcadores
+    de primeiro plano (pico da distance transform de um binário Otsu) e de fundo (dilatação
+    desse binário), separando blobs encostados. `fg_ratio` é a fração do valor máximo da
+    distance transform usada como corte para "com certeza é mob" — maior = região de
+    primeiro plano mais restrita (melhor separação, mas pode cortar partes finas do mob)."""
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    sat = hsv[:, :, 1]
+    sat = cv2.bilateralFilter(sat, d=5, sigmaColor=40, sigmaSpace=40)
+    _, binary = cv2.threshold(sat, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    x1, y1, x2, y2 = box_local
+    cy, cx = (y1 + y2) // 2, (x1 + x2) // 2
+    cy = min(max(cy, 0), binary.shape[0] - 1)
+    cx = min(max(cx, 0), binary.shape[1] - 1)
+    if binary[cy, cx] == 0:
+        binary = cv2.bitwise_not(binary)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+    sure_bg = cv2.dilate(opened, kernel, iterations=3)
+
+    dist = cv2.distanceTransform(opened, cv2.DIST_L2, 5)
+    if dist.max() > 0:
+        _, sure_fg = cv2.threshold(dist, fg_ratio * dist.max(), 255, 0)
+    else:
+        sure_fg = np.zeros_like(opened)
+    sure_fg = sure_fg.astype(np.uint8)
+
+    unknown = cv2.subtract(sure_bg, sure_fg)
+
+    _, markers = cv2.connectedComponents(sure_fg)
+    markers = markers + 1
+    markers[unknown == 255] = 0
+
+    cv2.watershed(roi, markers)
+
+    mob_label = markers[cy, cx]
+    if mob_label <= 1:
+        labels, counts = np.unique(markers[markers > 1], return_counts=True)
+        if len(labels) == 0:
+            return _refine_mask(binary)
+        mob_label = int(labels[np.argmax(counts)])
+
+    mask = np.where(markers == mob_label, 255, 0).astype(np.uint8)
+    return _refine_mask(mask)
+
+
+def segment_roi(
+    roi: np.ndarray,
+    box_local: tuple[int, int, int, int],
+    method: str = "grabcut",
+    grabcut_iterations: int = 5,
+    hsv_threshold: float = 2.2,
+    watershed_fg_ratio: float = 0.5,
+) -> np.ndarray:
     """Ponto único de entrada para segmentar uma ROI já recortada, escolhendo o método."""
     roi_up, scale = _upscale_for_small_roi(roi)
     box_up = tuple(int(v * scale) for v in box_local)
@@ -163,17 +224,19 @@ def segment_roi(roi: np.ndarray, box_local: tuple[int, int, int, int], method: s
     if method == "otsu":
         mask = segment_otsu(roi_up, box_up)
     elif method == "hsv":
-        mask = segment_hsv(roi_up, box_up)
+        mask = segment_hsv(roi_up, box_up, threshold=hsv_threshold)
     elif method == "grabcut":
-        mask = segment_grabcut(roi_up, box_up)
+        mask = segment_grabcut(roi_up, box_up, iterations=grabcut_iterations)
+    elif method == "watershed":
+        mask = segment_watershed(roi_up, box_up, fg_ratio=watershed_fg_ratio)
     elif method == "auto":
-        mask = segment_grabcut(roi_up, box_up)
+        mask = segment_grabcut(roi_up, box_up, iterations=grabcut_iterations)
         box_area = max(1, (box_up[2] - box_up[0]) * (box_up[3] - box_up[1]))
         mask_area = int((mask > 0).sum())
         roi_area = roi_up.shape[0] * roi_up.shape[1]
         # grabcut "falhou" se pegou quase nada ou quase tudo da ROI -> tenta alternativas
         if mask_area < 0.10 * box_area or mask_area > 0.98 * roi_area:
-            alt = segment_hsv(roi_up, box_up)
+            alt = segment_hsv(roi_up, box_up, threshold=hsv_threshold)
             mask = alt if (alt > 0).sum() >= 0.10 * box_area else segment_otsu(roi_up, box_up)
     else:
         raise ValueError(f"Método de segmentação desconhecido: {method!r}")

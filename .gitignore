@@ -12,12 +12,12 @@ venv/
 # Dataset
 data/
 
-# YOLO outputs
+# YOLO outputs (pesos pré-treinados/experimentais são baixados ou regenerados, não versionados)
 runs/
 *.pt
+!models/production/*.pt
 
 # Models
-models/*.pt
 models/*.onnx
 
 # IDE

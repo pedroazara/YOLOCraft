@@ -27,8 +27,8 @@ from PyQt6.QtWidgets import (
 )
 from ultralytics import SAM, YOLO
 
-from sam_segmentation import SamMobSegmenter
-from segmentation import MobSegmenter
+from src.sam_segmentation import SamMobSegmenter
+from src.segmentation import MobSegmenter
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff")

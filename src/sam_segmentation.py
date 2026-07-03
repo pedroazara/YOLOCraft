@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 from ultralytics import SAM, YOLO
 
-from classic_segmentation import mask_to_polygon
+from src.classic_segmentation import mask_to_polygon
 
 
 def _color_for_class(name: str) -> tuple[int, int, int]:

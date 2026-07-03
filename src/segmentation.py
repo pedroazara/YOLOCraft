@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
-from classic_segmentation import crop_with_margin, mask_to_polygon, segment_roi
+from src.classic_segmentation import crop_with_margin, mask_to_polygon, segment_roi
 
 
 def _color_for_class(name: str) -> tuple[int, int, int]:
@@ -30,9 +30,9 @@ def _color_for_class(name: str) -> tuple[int, int, int]:
 
 
 class MobSegmenter:
-    """Encapsula o pipeline de detecção (YOLO) + segmentação clássica (Otsu/HSV/GrabCut)."""
+    """Encapsula o pipeline de detecção (YOLO) + segmentação clássica (Otsu/HSV/GrabCut/Watershed)."""
 
-    VALID_METHODS = ("otsu", "hsv", "grabcut", "auto")
+    VALID_METHODS = ("otsu", "hsv", "grabcut", "watershed", "auto")
 
     def __init__(
         self,
@@ -54,11 +54,29 @@ class MobSegmenter:
     def class_names(self) -> dict[int, str]:
         return self.det_model.names
 
-    def detect_and_segment(self, image: np.ndarray, method: str | None = None) -> dict[str, Any]:
-        """Roda detecção (YOLO) + segmentação clássica numa imagem BGR e devolve um dict serializável."""
+    def detect_and_segment(
+        self,
+        image: np.ndarray,
+        method: str | None = None,
+        margin_ratio: float = 0.25,
+        grabcut_iterations: int = 5,
+        hsv_threshold: float = 2.2,
+        watershed_fg_ratio: float = 0.5,
+        poly_epsilon: float | None = None,
+    ) -> dict[str, Any]:
+        """Roda detecção (YOLO) + segmentação clássica numa imagem BGR e devolve um dict serializável.
+
+        Parâmetros ajustáveis (o frontend pode enviar qualquer um deles):
+        - margin_ratio: contexto de fundo ao redor da box, usado por todos os métodos.
+        - grabcut_iterations: só afeta o método "grabcut" (e "auto", que pode cair nele).
+        - hsv_threshold: só afeta o método "hsv" (e "auto", como fallback).
+        - watershed_fg_ratio: só afeta o método "watershed".
+        - poly_epsilon: simplificação do polígono final, comum a todos os métodos.
+        """
         method = method or self.default_method
         if method not in self.VALID_METHODS:
             raise ValueError(f"Método inválido: {method!r}. Use um de {self.VALID_METHODS}.")
+        epsilon = self.poly_epsilon if poly_epsilon is None else poly_epsilon
 
         height, width = image.shape[:2]
         det_result = self.det_model.predict(image, conf=self.conf_threshold, verbose=False)[0]
@@ -72,9 +90,16 @@ class MobSegmenter:
         classes = det_result.boxes.cls.cpu().numpy()
 
         for i, box in enumerate(boxes):
-            crop = crop_with_margin(image, box.tolist())
-            roi_mask = segment_roi(crop.roi, crop.box_local, method=method)
-            polygon_local = mask_to_polygon(roi_mask, self.poly_epsilon)
+            crop = crop_with_margin(image, box.tolist(), margin_ratio=margin_ratio)
+            roi_mask = segment_roi(
+                crop.roi,
+                crop.box_local,
+                method=method,
+                grabcut_iterations=grabcut_iterations,
+                hsv_threshold=hsv_threshold,
+                watershed_fg_ratio=watershed_fg_ratio,
+            )
+            polygon_local = mask_to_polygon(roi_mask, epsilon)
             # converte o polígono de coordenadas locais da ROI para coordenadas da imagem original
             polygon = [[px + crop.x0, py + crop.y0] for px, py in polygon_local]
 
