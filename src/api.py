@@ -1,4 +1,6 @@
+import hashlib
 import random
+from collections import OrderedDict
 from pathlib import Path
 from typing import Literal
 
@@ -62,6 +64,30 @@ def mask_to_polygon(mask):
     poly = max(cnts, key=cv2.contourArea)
     poly = cv2.approxPolyDP(poly, 1.5, True)
     return poly.reshape(-1, 2).tolist()
+
+
+# cache pequeno da última detecção por imagem: evita rodar o YOLO de novo quando o
+# modo comparativo do site testa vários métodos de segmentação na mesma imagem
+_DETECTION_CACHE: "OrderedDict[str, tuple]" = OrderedDict()
+_DETECTION_CACHE_MAX = 32
+
+
+def _detect(image: np.ndarray, image_hash: str):
+    cached = _DETECTION_CACHE.get(image_hash)
+    if cached is not None:
+        _DETECTION_CACHE.move_to_end(image_hash)
+        return cached
+
+    r = det_model.predict(image, conf=0.25, verbose=False)[0]
+    boxes = r.boxes.xyxy.cpu().numpy()
+    confs = r.boxes.conf.cpu().numpy()
+    classes = r.boxes.cls.cpu().numpy()
+    result = (boxes, confs, classes)
+
+    _DETECTION_CACHE[image_hash] = result
+    if len(_DETECTION_CACHE) > _DETECTION_CACHE_MAX:
+        _DETECTION_CACHE.popitem(last=False)
+    return result
 
 
 @app.get("/")
@@ -149,19 +175,19 @@ async def predict(file: UploadFile = File(...)):
     image = _read_image(contents)
     height, width = image.shape[:2]
 
-    r = det_model.predict(image, conf=0.25, verbose=False)[0]
+    image_hash = hashlib.sha256(contents).hexdigest()
+    boxes, confs, classes = _detect(image, image_hash)
 
     detections = []
-    if len(r.boxes):
-        boxes = r.boxes.xyxy.cpu().numpy()
+    if len(boxes):
         sam_result = sam_model(image, bboxes=boxes.tolist(), verbose=False)
         masks = sam_result[0].masks.data.cpu().numpy() if sam_result[0].masks is not None else []
 
         for i, box in enumerate(boxes):
             polygon = mask_to_polygon(masks[i]) if i < len(masks) else []
             detections.append({
-                "class": det_model.names[int(r.boxes.cls[i])],
-                "confidence": float(r.boxes.conf[i]),
+                "class": det_model.names[int(classes[i])],
+                "confidence": float(confs[i]),
                 "box": [float(x) for x in box],
                 "polygon": polygon,
             })
@@ -195,7 +221,9 @@ async def predict_classic(file: UploadFile = File(...), params: dict = Depends(_
     """Detecção (YOLO) + segmentação clássica (otsu/hsv/grabcut/watershed), sem SAM."""
     contents = await file.read()
     image = _read_image(contents)
-    return classic_segmenter.detect_and_segment(image, **params)
+    image_hash = hashlib.sha256(contents).hexdigest()
+    precomputed = _detect(image, image_hash)
+    return classic_segmenter.detect_and_segment(image, precomputed_detection=precomputed, **params)
 
 
 @app.post("/predict/classic/visualize")
@@ -203,7 +231,9 @@ async def predict_classic_visualize(file: UploadFile = File(...), params: dict =
     """Mesma coisa que /predict/classic, mas devolve um PNG anotado (debug visual)."""
     contents = await file.read()
     image = _read_image(contents)
-    result = classic_segmenter.detect_and_segment(image, **params)
+    image_hash = hashlib.sha256(contents).hexdigest()
+    precomputed = _detect(image, image_hash)
+    result = classic_segmenter.detect_and_segment(image, precomputed_detection=precomputed, **params)
     annotated = classic_segmenter.draw_detections(image, result["detections"])
     ok, buf = cv2.imencode(".png", annotated)
     if not ok:

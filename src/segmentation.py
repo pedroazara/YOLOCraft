@@ -63,6 +63,7 @@ class MobSegmenter:
         hsv_threshold: float = 2.2,
         watershed_fg_ratio: float = 0.5,
         poly_epsilon: float | None = None,
+        precomputed_detection: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
     ) -> dict[str, Any]:
         """Roda detecção (YOLO) + segmentação clássica numa imagem BGR e devolve um dict serializável.
 
@@ -72,6 +73,9 @@ class MobSegmenter:
         - hsv_threshold: só afeta o método "hsv" (e "auto", como fallback).
         - watershed_fg_ratio: só afeta o método "watershed".
         - poly_epsilon: simplificação do polígono final, comum a todos os métodos.
+        - precomputed_detection: (boxes, confs, classes) já calculados; pula a chamada ao
+          YOLO. Usado quando o mesmo detector já rodou para essa imagem (ex: modo
+          comparativo, testando vários métodos de segmentação na mesma detecção).
         """
         method = method or self.default_method
         if method not in self.VALID_METHODS:
@@ -79,15 +83,20 @@ class MobSegmenter:
         epsilon = self.poly_epsilon if poly_epsilon is None else poly_epsilon
 
         height, width = image.shape[:2]
-        det_result = self.det_model.predict(image, conf=self.conf_threshold, verbose=False)[0]
+
+        if precomputed_detection is not None:
+            boxes, confs, classes = precomputed_detection
+        else:
+            det_result = self.det_model.predict(image, conf=self.conf_threshold, verbose=False)[0]
+            if len(det_result.boxes) == 0:
+                return {"width": width, "height": height, "method": method, "detections": []}
+            boxes = det_result.boxes.xyxy.cpu().numpy()
+            confs = det_result.boxes.conf.cpu().numpy()
+            classes = det_result.boxes.cls.cpu().numpy()
 
         detections: list[dict[str, Any]] = []
-        if len(det_result.boxes) == 0:
+        if len(boxes) == 0:
             return {"width": width, "height": height, "method": method, "detections": detections}
-
-        boxes = det_result.boxes.xyxy.cpu().numpy()
-        confs = det_result.boxes.conf.cpu().numpy()
-        classes = det_result.boxes.cls.cpu().numpy()
 
         for i, box in enumerate(boxes):
             crop = crop_with_margin(image, box.tolist(), margin_ratio=margin_ratio)
