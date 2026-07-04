@@ -307,9 +307,9 @@ Contrato completo (formato de resposta e parâmetros) em `docs/frontend_integrat
 * [x] Visualização das bounding boxes
 * [x] Visualização das máscaras segmentadas
 * [x] Imagens de teste servidas pela própria API, filtráveis por mob
-* [ ] Aplicação web (em desenvolvimento em repositório separado)
+* [x] Aplicação web (em desenvolvimento em repositório separado)
 * [ ] Dashboard de resultados
-* [ ] Deploy em nuvem da API (Hugging Face Spaces)
+* [x] Deploy em nuvem da API (Hugging Face Spaces)
 
 ## Resultados Esperados
 
