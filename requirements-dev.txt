@@ -1,0 +1,6 @@
+-r requirements.txt
+mlflow
+PyQt6
+nbformat
+nbconvert
+ipykernel

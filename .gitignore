@@ -20,6 +20,11 @@ runs/
 # Models
 models/*.onnx
 
+# MLflow (tracking local: banco de metadados + artefatos dos runs)
+mlflow.db
+mlruns/
+mlartifacts/
+
 # IDE
 .vscode/
 .idea/
